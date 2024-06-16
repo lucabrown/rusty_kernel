@@ -7,7 +7,10 @@ use crate::hash_kernel::HashKernel;
 
 use graph_kernel::GraphKernel;
 use ndarray::Array2;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use rustc_hash::FxHashMap;
+use std::iter::FromIterator;
 
 use std::{
     collections::HashSet,
@@ -119,6 +122,28 @@ fn read_data(folder_path: &str) -> io::Result<(Vec<Graph>, Vec<i32>)> {
     Ok((graphs, target_labels))
 }
 
+fn train_test_split(
+    graphs: Vec<Graph>,
+    target_labels: Vec<i32>,
+    test_size: f64,
+) -> (Vec<Graph>, Vec<Graph>, Vec<i32>, Vec<i32>) {
+    let num_samples: usize = graphs.len();
+    let num_test: usize = (num_samples as f64 * test_size).round() as usize;
+    let num_train: usize = num_samples - num_test;
+
+    let mut indices: Vec<usize> = (0..num_samples).collect();
+    indices.shuffle(&mut thread_rng());
+
+    let (test_indices, train_indices) = indices.split_at(num_test);
+
+    let train_graphs = train_indices.iter().map(|&i| graphs[i].clone()).collect();
+    let test_graphs = test_indices.iter().map(|&i| graphs[i].clone()).collect();
+    let train_labels = train_indices.iter().map(|&i| target_labels[i]).collect();
+    let test_labels = test_indices.iter().map(|&i| target_labels[i]).collect();
+
+    (train_graphs, test_graphs, train_labels, test_labels)
+}
+
 fn main() {
     let folder_path: &str = "../DATA/MUTAG/MUTAG";
 
@@ -136,12 +161,16 @@ fn main() {
 
         let start_time = std::time::Instant::now();
 
-        let (graphs, target_label) = read_data(&folder_path).unwrap();
+        let (graphs, target_labels) = read_data(&folder_path).unwrap();
 
         let folder_read_time = start_time.elapsed().as_secs_f64();
 
+        // let (train_graphs, test_graphs, train_labels, test_labels) =
+        //     train_test_split(graphs, target_labels, 0.1);
+
         let kernel_matrix = kernel.fit_transform(graphs);
 
+        // let kernel_matrix = kernel.transform(test_graphs);
         // kernel.fit(graphs);
 
         let dat_fit_time = start_time.elapsed().as_secs_f64() - folder_read_time;
@@ -149,26 +178,6 @@ fn main() {
         println!(
             "\nFolder: {}\nRead time: {:.3} s\nFit time: {:.3} s",
             folder_name, folder_read_time, dat_fit_time
-        );
-
-        // print kernel matrix size
-        // println!("Kernel matrix size: {:?}", kernel_matrix);
-        // // print the sparsity of the kernel matrix
-        let mut count: usize = 0;
-        let mut r = 0;
-        for i in 0..kernel_matrix.shape()[0] {
-            for j in 0..kernel_matrix.shape()[1] {
-                r += 1;
-                if kernel_matrix[(i, j)] == 0.0 {
-                    count += 1;
-                }
-            }
-        }
-        println!("Count: {}", count);
-        println!("R: {}", r);
-        println!(
-            "Sparsity: {:.3}",
-            count as f64 / (kernel_matrix.shape()[0] * kernel_matrix.shape()[1]) as f64
         );
     }
 }

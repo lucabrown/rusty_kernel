@@ -67,6 +67,43 @@ impl GraphKernel for HashKernel {
         self.calculate_kernel_matrix(None)
     }
 
+    // Calculate the kernel matrix, between given and fitted dataset
+    fn transform(&self, graphs: Vec<Graph>) -> Array2<f64> {
+        if self.x.is_empty() {
+            panic!("The kernel has not been fitted yet");
+        }
+
+        let mut y: Vec<(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)> = Vec::new();
+
+        for graph in (&graphs).iter() {
+            let mut new_labels: FxHashMap<usize, usize> = FxHashMap::default();
+            let mut graph_neighbours: FxHashMap<usize, Vec<usize>> = FxHashMap::default();
+
+            for vertex in 0..graph.n_vertices {
+                let neighbours: Vec<usize> = graph
+                    .adjacency_matrix
+                    .get(vertex)
+                    .unwrap()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, &edge)| edge == 1)
+                    .map(|(idx, _)| idx)
+                    .collect();
+
+                let new_label: usize =
+                    self.neighbourhood_hash(vertex, &graph.node_index_dict, neighbours.clone());
+
+                graph_neighbours.insert(vertex, neighbours);
+                new_labels.insert(vertex, new_label);
+            }
+
+            // Store the graphs and node embeddings
+            y.push((graph.n_vertices, new_labels, graph_neighbours));
+        }
+
+        self.calculate_kernel_matrix(Some(&y))
+    }
+
     fn neighbourhood_hash(
         &self,
         vertex: usize,
@@ -134,6 +171,38 @@ impl GraphKernel for HashKernel {
 
             kernel_matrix
         }
+    }
+
+    fn compare_labels(
+        &self,
+        labels1: &FxHashMap<usize, usize>,
+        labels2: &FxHashMap<usize, usize>,
+    ) -> f64 {
+        // sort labels by value
+        let mut labels1: Vec<(&usize, &usize)> = labels1.iter().collect();
+        labels1.sort_by(|a, b| a.1.cmp(b.1));
+
+        let mut labels2: Vec<(&usize, &usize)> = labels2.iter().collect();
+        labels2.sort_by(|a, b| a.1.cmp(b.1));
+
+        let mut count: usize = 1;
+
+        let mut i: usize = 0;
+        let mut j: usize = 0;
+
+        while i < labels1.len() && j < labels2.len() {
+            if labels1[i].1 == labels2[j].1 {
+                count += 1;
+                i += 1;
+                j += 1;
+            } else if labels1[i].1 < labels2[j].1 {
+                i += 1;
+            } else {
+                j += 1;
+            }
+        }
+
+        count as f64 / ((labels1.len() + labels2.len() - count as usize) as f64)
     }
 
     fn make_symmetric(k: &mut Array2<f64>) {

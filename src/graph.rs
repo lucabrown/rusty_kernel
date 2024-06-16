@@ -10,3 +10,13 @@ pub struct Graph {
     // The set of vertices corresponding to the edge_dictionary representation
     pub n_vertices: usize,
 }
+
+impl Clone for Graph {
+    fn clone(&self) -> Self {
+        Graph {
+            adjacency_matrix: self.adjacency_matrix.clone(),
+            node_index_dict: self.node_index_dict.clone(),
+            n_vertices: self.n_vertices,
+        }
+    }
+}
