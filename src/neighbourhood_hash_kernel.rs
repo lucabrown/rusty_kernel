@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{graph::Graph, graph_kernel::GraphKernel};
 
-pub struct HashKernel {
+pub struct NeighbourhoodHashKernel {
     // The base map of labels to hashes
     pub labels_hash_dict: FxHashMap<i32, usize>,
 
@@ -13,7 +13,7 @@ pub struct HashKernel {
     pub x: Vec<(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)>,
 }
 
-impl GraphKernel for HashKernel {
+impl GraphKernel for NeighbourhoodHashKernel {
     // Fit the dataset
     fn fit(&mut self, graphs: Vec<Graph>) {
         // Gather the unique labels present in the whole dataset (some graphs may only have a small subset of labels)
@@ -68,7 +68,7 @@ impl GraphKernel for HashKernel {
     }
 
     // Calculate the kernel matrix, between given and fitted dataset
-    fn transform(&self, graphs: Vec<Graph>) -> Array2<f64> {
+    extern "C" fn transform(&self, graphs: Vec<Graph>) -> Array2<f64> {
         if self.x.is_empty() {
             panic!("The kernel has not been fitted yet");
         }
@@ -163,7 +163,7 @@ impl GraphKernel for HashKernel {
                 cache.push(&e);
             }
 
-            HashKernel::make_symmetric(&mut kernel_matrix);
+            NeighbourhoodHashKernel::make_symmetric(&mut kernel_matrix);
 
             kernel_matrix
         } else {

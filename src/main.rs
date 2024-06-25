@@ -1,9 +1,9 @@
 mod graph;
 mod graph_kernel;
-mod hash_kernel;
+mod neighbourhood_hash_kernel;
 
 use crate::graph::Graph;
-use crate::hash_kernel::HashKernel;
+use crate::neighbourhood_hash_kernel::NeighbourhoodHashKernel;
 
 use graph_kernel::GraphKernel;
 use ndarray::Array2;
@@ -149,7 +149,7 @@ fn main() {
 
     // for each folder in ./DATA
     for folder in fs::read_dir("../DATA").unwrap() {
-        let mut kernel: HashKernel = HashKernel {
+        let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {
             labels_hash_dict: FxHashMap::default(),
             x: Vec::new(),
         };
