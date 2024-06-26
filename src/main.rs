@@ -2,10 +2,10 @@ mod graph;
 mod graph_kernel;
 mod neighbourhood_hash_kernel;
 
-use crate::graph::Graph;
-use crate::neighbourhood_hash_kernel::NeighbourhoodHashKernel;
-
+use graph::Graph;
 use graph_kernel::GraphKernel;
+use neighbourhood_hash_kernel::NeighbourhoodHashKernel;
+
 use ndarray::Array2;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -145,8 +145,6 @@ fn train_test_split(
 }
 
 fn main() {
-    let folder_path: &str = "../DATA/MUTAG/MUTAG";
-
     // for each folder in ./DATA
     for folder in fs::read_dir("../DATA").unwrap() {
         let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {

@@ -68,7 +68,7 @@ impl GraphKernel for NeighbourhoodHashKernel {
     }
 
     // Calculate the kernel matrix, between given and fitted dataset
-    extern "C" fn transform(&self, graphs: Vec<Graph>) -> Array2<f64> {
+    fn transform(&self, graphs: Vec<Graph>) -> Array2<f64> {
         if self.x.is_empty() {
             panic!("The kernel has not been fitted yet");
         }

@@ -3,9 +3,13 @@ name = "rusty_kernel"
 version = "0.1.0"
 edition = "2021"
 
-# [lib]
-# name = "rusty_kernel"
-# crate-type = ["cdylib"]
+[lib]
+name = "rusty_kernel"
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "rusty_kernel"
+path = "src/main.rs"
 
 [dependencies]
 rand = "0.8.4"
