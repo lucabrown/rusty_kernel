@@ -4,6 +4,8 @@ use rustc_hash::FxHashMap;
 use crate::graph::Graph;
 
 pub(crate) trait GraphKernel {
+    fn new() -> Self;
+
     // Fit a dataset for a transformer
     fn fit(&mut self, graphs: Vec<Graph>);
 

@@ -14,6 +14,13 @@ pub struct NeighbourhoodHashKernel {
 }
 
 impl GraphKernel for NeighbourhoodHashKernel {
+    fn new() -> Self {
+        NeighbourhoodHashKernel {
+            labels_hash_dict: FxHashMap::default(),
+            x: Vec::new(),
+        }
+    }
+
     // Fit the dataset
     fn fit(&mut self, graphs: Vec<Graph>) {
         // Gather the unique labels present in the whole dataset (some graphs may only have a small subset of labels)
