@@ -1,10 +1,12 @@
 mod graph;
 mod graph_kernel;
 mod neighbourhood_hash_kernel;
+mod wasserstein_hash_kernel;
 
 use graph::Graph;
 use graph_kernel::GraphKernel;
 use neighbourhood_hash_kernel::NeighbourhoodHashKernel;
+use wasserstein_hash_kernel::WassersteinHashKernel;
 
 use ndarray::Array2;
 use rand::seq::SliceRandom;
@@ -146,8 +148,13 @@ fn train_test_split(
 
 fn main() {
     // for each folder in ./DATA
-    for folder in fs::read_dir("../DATA").unwrap() {
-        let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {
+    for folder in fs::read_dir("./DATA").unwrap() {
+        // let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {
+        //     labels_hash_dict: FxHashMap::default(),
+        //     x: Vec::new(),
+        // };
+
+        let mut kernel = WassersteinHashKernel {
             labels_hash_dict: FxHashMap::default(),
             x: Vec::new(),
         };
@@ -161,15 +168,11 @@ fn main() {
 
         let (graphs, target_labels) = read_data(&folder_path).unwrap();
 
+        print!("Graphs: {:?}", graphs.len());
+
         let folder_read_time = start_time.elapsed().as_secs_f64();
 
-        // let (train_graphs, test_graphs, train_labels, test_labels) =
-        //     train_test_split(graphs, target_labels, 0.1);
-
         let kernel_matrix = kernel.fit_transform(graphs);
-
-        // let kernel_matrix = kernel.transform(test_graphs);
-        // kernel.fit(graphs);
 
         let dat_fit_time = start_time.elapsed().as_secs_f64() - folder_read_time;
 

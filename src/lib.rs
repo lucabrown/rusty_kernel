@@ -2,6 +2,7 @@ mod graph;
 mod graph_kernel;
 mod neighbourhood_hash_kernel;
 mod py_graph_kernel;
+mod wasserstein_hash_kernel;
 
 use py_graph_kernel::PyGraphKernel;
 use pyo3::prelude::*;
