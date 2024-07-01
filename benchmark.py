@@ -88,7 +88,7 @@ random_state = 42
 
 
 graph_kernels = [
-    NeighborhoodHash(normalize=True, random_state=random_state, R=1, nh_type='count_sensitive'),
+    NeighborhoodHash(normalize=True, random_state=random_state, R=10, nh_type='count_sensitive'),
 ]
 
 dict = {}
@@ -116,11 +116,11 @@ for kernel in graph_kernels:
         
         data_fit_time = time.time()
         
-        K_train = kernel.fit_transform(G_train)
-        K_test = kernel.transform(G_test)
+        # K_train = kernel.fit_transform(G_train)
+        # K_test = kernel.transform(G_test)
         
-        # K_train = gk.fit_transform(transform_data(G_train))
-        # K_test = gk.transform(transform_data(G_test))
+        K_train = gk.fit_transform(transform_data(G_train))
+        K_test = gk.transform(transform_data(G_test)).T
 
        
 
@@ -132,12 +132,12 @@ for kernel in graph_kernels:
         print()
         
         
-        # clf = SVC(kernel='precomputed')
-        # clf.fit(K_train, y_train)
-        # y_pred = clf.predict(K_test)
+        clf = SVC(kernel='precomputed')
+        clf.fit(K_train, y_train)
+        y_pred = clf.predict(K_test)
 
-        # accuracy = accuracy_score(y_test, y_pred)
-        # print(f"- {accuracy * 100:.2f} %")
+        accuracy = accuracy_score(y_test, y_pred)
+        print(f"- {accuracy * 100:.2f} %")
 
         
     dict[kernel] = results

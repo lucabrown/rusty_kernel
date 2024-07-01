@@ -9,6 +9,9 @@ pub struct NeighbourhoodHashKernel {
     // The base map of labels to hashes
     pub labels_hash_dict: FxHashMap<i32, usize>,
 
+    // The number of hash cycles
+    // pub r : i32;
+
     // A vector where each entry is a tuple of (vertex, hashed label, neighbours) for one graph
     pub x: Vec<(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)>,
 }

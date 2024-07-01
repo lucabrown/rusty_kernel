@@ -7,6 +7,7 @@ use lp_modeler::{
     dsl::{LpContinuous, LpInteger, LpObjective, LpOperations, LpProblem},
 };
 use ndarray::Array2;
+use numpy::npyffi::objects;
 use rustc_hash::FxHashMap;
 
 use crate::{graph::Graph, graph_kernel::GraphKernel};
@@ -167,13 +168,21 @@ impl GraphKernel for WassersteinHashKernel {
 
             let mut cache: Vec<&(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)> =
                 Vec::new();
+
+            let total_graphs = self.x.len();
+            let mut progress = 0;
+
             for (i, e) in self.x.iter().enumerate() {
+                // println!("Comparing one label");
                 kernel_matrix[(i, i)] = self.compare_labels(&e.1, &e.1);
 
                 for (j, f) in cache.iter().enumerate() {
                     kernel_matrix[(j, i)] = self.compare_labels(&f.1, &e.1);
                 }
                 cache.push(&e);
+
+                progress += 1;
+                println!("Progress: {}/{}", progress, total_graphs);
             }
 
             WassersteinHashKernel::make_symmetric(&mut kernel_matrix);
@@ -196,9 +205,10 @@ impl GraphKernel for WassersteinHashKernel {
         let n: usize = labels1.len();
         let n_prime: usize = labels2.len();
 
-        let mut distance_matrix: Array2<f64> = self.compute_distance_matrix(labels1, labels2);
+        let distance_matrix: Array2<f64> = self.compute_distance_matrix(labels1, labels2);
 
         let mut problem = LpProblem::new("Transport problem", LpObjective::Minimize);
+        let mut objective: LpExpression = 0.0.into();
 
         let mut p: Vec<Vec<LpContinuous>> = Vec::new();
 
@@ -216,57 +226,72 @@ impl GraphKernel for WassersteinHashKernel {
         // Row constraints: sum of each row must be 1/n
         for i in 0..n {
             let mut row: Vec<LpContinuous> = Vec::new();
+            let mut row_constraint = LpExpression::from(0.0);
             for j in 0..n_prime {
                 row.push(p[i][j].clone());
+                row_constraint += p[i][j].clone() * distance_matrix[[i, j]] as f32;
             }
-            let ref row_sum = LpContinuous::new(&format!("row_sum_{}", i));
-            problem += row_sum.equal(1.0 / (n as f32));
+            // let ref row_sum = LpContinuous::new(&format!("row_sum_{}", i));
+            problem += row_constraint.equal(1.0 / (n as f32));
         }
 
         // Column constraints: sum of each column must be 1/n'
         for j in 0..n_prime {
             let mut column: Vec<LpContinuous> = Vec::new();
+            let mut column_constraint = LpExpression::from(0.0);
             for i in 0..n {
                 column.push(p[i][j].clone());
+                column_constraint += p[i][j].clone() * distance_matrix[[i, j]] as f32;
             }
-            let ref column_sum = LpContinuous::new(&format!("column_sum_{}", j));
-            problem += column_sum.equal(1.0 / (n_prime as f32));
+            // let ref column_sum = LpContinuous::new(&format!("column_sum_{}", j));
+            problem += column_constraint.equal(1.0 / (n_prime as f32));
         }
 
-        let mut objective: LpExpression = 0.0.into();
         for i in 0..n {
             for j in 0..n_prime {
-                objective += distance_matrix[[i, j]] as f32 * p[i][j].clone();
+                let cost = distance_matrix[[i, j]] as f32;
+                objective += cost * p[i][j].clone();
             }
         }
 
         problem.add_objective_expression(&mut objective);
 
+        // println!("Problem:",);
         let solver = CbcSolver::new();
+
+        // println!("Solving problem");
 
         match solver.run(&problem) {
             Ok(solution) => {
                 // println!("Status {:?}", solution.status);
                 let mut total_cost = 0.0;
+                let mut sum = 0.0;
                 for (name, value) in solution.results.iter() {
                     // Parse the variable name to get the indices i and j
                     let parts: Vec<&str> = name.split('_').collect();
 
                     // println!("name: {}, {}", name, value);
+                    sum += *value as f64;
                     if parts.len() == 3 {
-                        // let i: usize = parts[1].parse().unwrap();
-                        // let j: usize = parts[2].parse().unwrap();
+                        let i: usize = parts[1].parse().unwrap();
+                        let j: usize = parts[2].parse().unwrap();
                         // Compute the transport cost
-                        // total_cost += distance_matrix[[i, j]] * *value as f64;
+                        total_cost += distance_matrix[[i, j]] * *value as f64;
                     }
                 }
                 // println!("Total transport cost = {}", total_cost);
+                // println!("Sum = {}", sum);
                 return total_cost;
             }
-            Err(msg) => println!("{}", msg),
+            Err(msg) => {
+                println!("{}", msg);
+
+                // panic!("Error solving problem")
+                1.0
+            }
         }
 
-        0.0
+        // 0.0
     }
 
     fn make_symmetric(k: &mut Array2<f64>) {
@@ -320,12 +345,12 @@ impl WassersteinHashKernel {
         // }
 
         let n: usize = labels1.len();
-        let nPrime: usize = labels2.len();
+        let n_prime: usize = labels2.len();
 
-        let mut distance_matrix: Array2<f64> = Array2::zeros((n, nPrime));
+        let mut distance_matrix: Array2<f64> = Array2::zeros((n, n_prime));
 
         for i in 0..n {
-            for j in 0..nPrime {
+            for j in 0..n_prime {
                 distance_matrix[(i, j)] = self.hamming_distance(
                     labels1.get(&i).unwrap().clone(),
                     labels2.get(&j).unwrap().clone(),
@@ -339,6 +364,14 @@ impl WassersteinHashKernel {
                 // );
             }
         }
+
+        // print distance matrix
+        // for i in 0..n {
+        //     for j in 0..n_prime {
+        //         print!("{:.3} ", distance_matrix[[i, j]]);
+        //     }
+        //     println!();
+        // }
 
         distance_matrix
     }
