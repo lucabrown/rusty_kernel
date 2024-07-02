@@ -10,7 +10,7 @@ pub struct NeighbourhoodHashKernel {
     pub labels_hash_dict: FxHashMap<i32, usize>,
 
     // The number of hash cycles
-    // pub r : i32;
+    pub r: usize,
 
     // A vector where each entry is a tuple of (vertex, hashed label, neighbours) for one graph
     pub x: Vec<(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)>,
@@ -20,6 +20,7 @@ impl GraphKernel for NeighbourhoodHashKernel {
     fn new() -> Self {
         NeighbourhoodHashKernel {
             labels_hash_dict: FxHashMap::default(),
+            r: 1,
             x: Vec::new(),
         }
     }
@@ -48,15 +49,7 @@ impl GraphKernel for NeighbourhoodHashKernel {
             let mut graph_neighbours: FxHashMap<usize, Vec<usize>> = FxHashMap::default();
 
             for vertex in 0..graph.n_vertices {
-                let neighbours: Vec<usize> = graph
-                    .adjacency_matrix
-                    .get(vertex)
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, &edge)| edge == 1)
-                    .map(|(idx, _)| idx)
-                    .collect();
+                let neighbours: Vec<usize> = self.get_neighbours(graph, vertex);
 
                 let new_label: usize =
                     self.neighbourhood_hash(vertex, &graph.node_index_dict, neighbours.clone());
@@ -69,6 +62,18 @@ impl GraphKernel for NeighbourhoodHashKernel {
             self.x
                 .push((graph.n_vertices, new_labels, graph_neighbours));
         }
+    }
+
+    fn get_neighbours(&self, graph: &Graph, vertex: usize) -> Vec<usize> {
+        graph
+            .adjacency_matrix
+            .get(vertex)
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter(|(_, &edge)| edge == 1)
+            .map(|(idx, _)| idx)
+            .collect()
     }
 
     fn fit_transform(&mut self, graphs: Vec<Graph>) -> Array2<f64> {
@@ -178,6 +183,14 @@ impl GraphKernel for NeighbourhoodHashKernel {
             kernel_matrix
         } else {
             let mut kernel_matrix: Array2<f64> = Array2::zeros((self.x.len(), y.unwrap().len()));
+
+            for (i, e) in self.x.iter().enumerate() {
+                for (j, f) in y.unwrap().iter().enumerate() {
+                    kernel_matrix[(i, j)] = self.compare_labels(&e.1, &f.1);
+                }
+            }
+
+            // print!("{:?}", kernel_matrix);
 
             kernel_matrix
         }

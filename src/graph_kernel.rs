@@ -43,4 +43,6 @@ pub(crate) trait GraphKernel {
     fn rot_left(&self, hash: usize, n_bits: usize) -> usize;
 
     fn make_symmetric(k: &mut Array2<f64>);
+
+    fn get_neighbours(&self, graph: &Graph, vertex: usize) -> Vec<usize>;
 }

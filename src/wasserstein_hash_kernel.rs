@@ -94,15 +94,7 @@ impl GraphKernel for WassersteinHashKernel {
             let mut graph_neighbours: FxHashMap<usize, Vec<usize>> = FxHashMap::default();
 
             for vertex in 0..graph.n_vertices {
-                let neighbours: Vec<usize> = graph
-                    .adjacency_matrix
-                    .get(vertex)
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, &edge)| edge == 1)
-                    .map(|(idx, _)| idx)
-                    .collect();
+                let neighbours: Vec<usize> = self.get_neighbours(graph, vertex);
 
                 let new_label: usize =
                     self.neighbourhood_hash(vertex, &graph.node_index_dict, neighbours.clone());
@@ -193,6 +185,18 @@ impl GraphKernel for WassersteinHashKernel {
 
             kernel_matrix
         }
+    }
+
+    fn get_neighbours(&self, graph: &Graph, vertex: usize) -> Vec<usize> {
+        graph
+            .adjacency_matrix
+            .get(vertex)
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter(|(_, &edge)| edge == 1)
+            .map(|(idx, _)| idx)
+            .collect()
     }
 
     fn compare_labels(

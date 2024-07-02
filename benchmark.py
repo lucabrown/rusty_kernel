@@ -88,7 +88,7 @@ random_state = 42
 
 
 graph_kernels = [
-    NeighborhoodHash(normalize=True, random_state=random_state, R=10, nh_type='count_sensitive'),
+    NeighborhoodHash(normalize=True, random_state=random_state, R=1, nh_type='count_sensitive'),
 ]
 
 dict = {}
@@ -116,11 +116,11 @@ for kernel in graph_kernels:
         
         data_fit_time = time.time()
         
-        # K_train = kernel.fit_transform(G_train)
-        # K_test = kernel.transform(G_test)
+        K_train = kernel.fit_transform(G_train)
+        K_test = kernel.transform(G_test)
         
-        K_train = gk.fit_transform(transform_data(G_train))
-        K_test = gk.transform(transform_data(G_test)).T
+        # K_train = gk.fit_transform(transform_data(G_train))
+        # K_test = gk.transform(transform_data(G_test)).T
 
        
 
