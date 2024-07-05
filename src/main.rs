@@ -148,17 +148,17 @@ fn train_test_split(
 
 fn main() {
     // for each folder in ./DATA
-    for folder in fs::read_dir("./DATA").unwrap() {
-        let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {
-            labels_hash_dict: FxHashMap::default(),
-            r: 2,
-            x: Vec::new(),
-        };
-
-        // let mut kernel = WassersteinHashKernel {
+    for folder in fs::read_dir("./TEST").unwrap() {
+        // let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {
         //     labels_hash_dict: FxHashMap::default(),
+        //     r: 2,
         //     x: Vec::new(),
         // };
+
+        let mut kernel = WassersteinHashKernel {
+            labels_hash_dict: FxHashMap::default(),
+            x: Vec::new(),
+        };
 
         let folder_path: String = folder.unwrap().path().display().to_string();
         let folder_name: String = folder_path.split('/').last().unwrap().to_string();
@@ -177,12 +177,12 @@ fn main() {
         let k = kernel.transform(graphs);
 
         // print kernel matrix
-        // for i in 0..kernel_matrix.shape()[0] {
-        //     for j in 0..kernel_matrix.shape()[1] {
-        //         print!("{:.3} ", kernel_matrix[[i, j]]);
-        //     }
-        //     println!();
-        // }
+        for i in 0..kernel_matrix.shape()[0] {
+            for j in 0..kernel_matrix.shape()[1] {
+                print!("{:.3} ", kernel_matrix[[i, j]]);
+            }
+            println!();
+        }
 
         let dat_fit_time = start_time.elapsed().as_secs_f64() - folder_read_time;
 

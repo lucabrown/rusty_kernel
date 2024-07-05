@@ -1,7 +1,8 @@
+use std::cmp::max;
 use std::collections::HashSet;
 
 use lp_modeler::dsl::*;
-use lp_modeler::solvers::{CbcSolver, SolverTrait};
+use lp_modeler::solvers::{CbcSolver, SolverTrait, WithNbThreads};
 use lp_modeler::{
     constraint,
     dsl::{LpContinuous, LpInteger, LpObjective, LpOperations, LpProblem},
@@ -164,12 +165,31 @@ impl GraphKernel for WassersteinHashKernel {
             let total_graphs = self.x.len();
             let mut progress = 0;
 
+            let mut max_value = std::f64::MIN;
+            let mut min_value = std::f64::MAX;
+
             for (i, e) in self.x.iter().enumerate() {
                 // println!("Comparing one label");
                 kernel_matrix[(i, i)] = self.compare_labels(&e.1, &e.1);
 
+                if kernel_matrix[(i, i)] > max_value {
+                    max_value = kernel_matrix[(i, i)];
+                }
+
+                if kernel_matrix[(i, i)] < min_value {
+                    min_value = kernel_matrix[(i, i)];
+                }
+
                 for (j, f) in cache.iter().enumerate() {
                     kernel_matrix[(j, i)] = self.compare_labels(&f.1, &e.1);
+
+                    if kernel_matrix[(j, i)] > max_value {
+                        max_value = kernel_matrix[(j, i)];
+                    }
+
+                    if kernel_matrix[(j, i)] < min_value {
+                        min_value = kernel_matrix[(j, i)];
+                    }
                 }
                 cache.push(&e);
 
@@ -177,7 +197,27 @@ impl GraphKernel for WassersteinHashKernel {
                 println!("Progress: {}/{}", progress, total_graphs);
             }
 
+            //print kernel amtrix
+            // for i in 0..self.x.len() {
+            //     for j in 0..self.x.len() {
+            //         print!("{:.3} ", kernel_matrix[[i, j]]);
+            //     }
+            //     println!();
+            // }
+
+            println!("Max value: {}", max_value);
+            println!("Min value: {}", min_value);
             WassersteinHashKernel::make_symmetric(&mut kernel_matrix);
+
+            // Normalize the kernel matrix
+            // for i in 0..self.x.len() {
+            //     for j in 0..self.x.len() {
+            //         println!("Before: {}", kernel_matrix[[i, j]]);
+            //         kernel_matrix[(i, j)] =
+            //             (kernel_matrix[(i, j)] - min_value) / (max_value - min_value);
+            //         println!("After: {}\n", kernel_matrix[[i, j]]);
+            //     }
+            // }
 
             kernel_matrix
         } else {
@@ -199,6 +239,7 @@ impl GraphKernel for WassersteinHashKernel {
             .collect()
     }
 
+    // Returns the Frobenius dot product between distance matrix and transport matrix
     fn compare_labels(
         &self,
         labels1: &FxHashMap<usize, usize>,
@@ -212,9 +253,23 @@ impl GraphKernel for WassersteinHashKernel {
         let distance_matrix: Array2<f64> = self.compute_distance_matrix(labels1, labels2);
 
         let mut problem = LpProblem::new("Transport problem", LpObjective::Minimize);
-        let mut objective: LpExpression = 0.0.into();
 
         let mut p: Vec<Vec<LpContinuous>> = Vec::new();
+
+        // let mut matrix_vars = Vec::new();
+        // for i in 0..n {
+        //     for j in 0..n_prime {
+        //         matrix_vars.push(LpContinuous::new(&format!("p_{}_{}", i, j)));
+        //     }
+        // }
+
+        // for i in 0..n {
+        //     let mut row_sum = LpExpression::from(0.0);
+        //     for j in 0..n_prime {
+        //         row_sum += &matrix_vars[i * n_prime + j];
+        //     }
+        //     problem.add_constraints(&row_sum.equal(1.0 / n as f32));
+        // }
 
         // Create variables for the transport matrix p
         for i in 0..n {
@@ -232,11 +287,14 @@ impl GraphKernel for WassersteinHashKernel {
             let mut row: Vec<LpContinuous> = Vec::new();
             let mut row_constraint = LpExpression::from(0.0);
             for j in 0..n_prime {
-                row.push(p[i][j].clone());
-                row_constraint += p[i][j].clone() * distance_matrix[[i, j]] as f32;
+                // row.push(p[i][j].clone());
+                row_constraint += &p[i][j]; //* distance_matrix[[i, j]] as f32;
             }
+
+            // println!("Row constraint: {:?}", row_constraint);
+
             // let ref row_sum = LpContinuous::new(&format!("row_sum_{}", i));
-            problem += row_constraint.equal(1.0 / (n as f32));
+            problem.add_constraints(&row_constraint.equal(1.0 / (n as f32)));
         }
 
         // Column constraints: sum of each column must be 1/n'
@@ -244,26 +302,35 @@ impl GraphKernel for WassersteinHashKernel {
             let mut column: Vec<LpContinuous> = Vec::new();
             let mut column_constraint = LpExpression::from(0.0);
             for i in 0..n {
-                column.push(p[i][j].clone());
-                column_constraint += p[i][j].clone() * distance_matrix[[i, j]] as f32;
+                // column.push(p[i][j].clone());
+                column_constraint += &p[i][j]; //* distance_matrix[[i, j]] as f32;
             }
             // let ref column_sum = LpContinuous::new(&format!("column_sum_{}", j));
-            problem += column_constraint.equal(1.0 / (n_prime as f32));
+            problem.add_constraints(&column_constraint.equal(1.0 / (n_prime as f32)));
         }
 
         for i in 0..n {
+            let mut objective: LpExpression = 0.0.into();
+
             for j in 0..n_prime {
                 let cost = distance_matrix[[i, j]] as f32;
-                objective += cost * p[i][j].clone();
+                objective += cost * &p[i][j];
             }
+
+            problem.add_objective_expression(&mut objective);
+            break;
         }
 
-        problem.add_objective_expression(&mut objective);
+        // print objective function
+        // println!("Objective function: {:?}", objective);
 
         // println!("Problem:",);
         let solver = CbcSolver::new();
+        // solver.with_nb_threads(10);
+        // let solver = CbcSolver::with_nb_threads(&s, 10);
 
         // println!("Solving problem");
+        let mut transport_matrix: Array2<f64> = Array2::zeros((n, n_prime));
 
         match solver.run(&problem) {
             Ok(solution) => {
@@ -283,19 +350,49 @@ impl GraphKernel for WassersteinHashKernel {
                         total_cost += distance_matrix[[i, j]] * *value as f64;
                     }
                 }
-                // println!("Total transport cost = {}", total_cost);
-                // println!("Sum = {}", sum);
-                return total_cost;
+
+                // fill transport matrix with solution values
+                for i in 0..n {
+                    let mut row_sum = 0.0;
+                    for j in 0..n_prime {
+                        row_sum += solution.results[&format!("p_{}_{}", i, j)];
+                        // print!("{:.3} ", solution.results[&format!("p_{}_{}", i, j)]);
+                        transport_matrix[[i, j]] =
+                            solution.results[&format!("p_{}_{}", i, j)] as f64;
+
+                        // println!("Row sum: {}", row_sum);
+                        // println!("1/n: {}", 1.0 / (n as f64));
+                        // println!("1/n_prime: {}", 1.0 / (n_prime as f64));
+                    }
+                    // println!();
+                }
+
+                // return total_cost;
             }
             Err(msg) => {
                 println!("{}", msg);
 
                 // panic!("Error solving problem")
-                1.0
+                // 1.0
             }
         }
 
-        // 0.0
+        let mut wasserstein_distance: f64 = 0.0;
+
+        for (i, j) in transport_matrix.iter().zip(distance_matrix.iter()) {
+            // println!("i: {}, j: {}", i, j);
+
+            wasserstein_distance += i * j;
+        }
+
+        // println!("Waterstein distance: {}", wasserstein_distance);
+
+        let laplacian_kernel = self.compute_laplacian_kernel(wasserstein_distance, 1.2);
+
+        // println!("Wasserstein distance: {}", wasserstein_distance);
+        // println!("Laplacian kernel: {}", laplacian_kernel);
+
+        laplacian_kernel
     }
 
     fn make_symmetric(k: &mut Array2<f64>) {
@@ -333,6 +430,10 @@ impl GraphKernel for WassersteinHashKernel {
 }
 
 impl WassersteinHashKernel {
+    fn compute_laplacian_kernel(&self, wasserstein_distance: f64, lambda: f64) -> f64 {
+        (-lambda * wasserstein_distance).exp()
+    }
+
     fn compute_distance_matrix(
         &self,
         labels1: &FxHashMap<usize, usize>,
