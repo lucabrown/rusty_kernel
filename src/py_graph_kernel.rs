@@ -12,7 +12,7 @@ use crate::{
 
 #[pyclass]
 pub struct PyGraphKernel {
-    kernel: NeighbourhoodHashKernel,
+    kernel: WassersteinHashKernel,
 }
 
 #[pymethods]
@@ -20,7 +20,7 @@ impl PyGraphKernel {
     #[new]
     fn new() -> Self {
         PyGraphKernel {
-            kernel: NeighbourhoodHashKernel::new(),
+            kernel: WassersteinHashKernel::new(),
         }
     }
 
@@ -50,11 +50,7 @@ impl PyGraphKernel {
                 graphs.push(graph);
             }
 
-            println!("graphs: {:?}", graphs.len());
-
             let matrix: Array2<f64> = self.kernel.fit_transform(graphs);
-
-            println!("shape: {:?}", matrix.shape());
 
             let result_converted: PyObject = matrix.to_pyarray(py).to_owned().into();
             Ok(result_converted)

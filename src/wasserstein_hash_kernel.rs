@@ -1,9 +1,9 @@
+use core::panic;
 use std::collections::HashSet;
 
-use lp_modeler::dsl::*;
-use lp_modeler::dsl::{LpContinuous, LpObjective, LpOperations, LpProblem};
-use lp_modeler::solvers::{CbcSolver, SolverTrait};
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
+use ot::prelude::*;
+use rust_optimal_transport as ot;
 use rustc_hash::FxHashMap;
 
 use crate::{graph::Graph, graph_kernel::GraphKernel};
@@ -27,6 +27,7 @@ impl GraphKernel for WassersteinHashKernel {
     // Fit the dataset
     fn fit(&mut self, graphs: Vec<Graph>) {
         // Gather the unique labels present in the whole dataset (some graphs may only have a small subset of labels)
+
         let unique_labels: Vec<&i32> = graphs
             .iter()
             .map(|graph| graph.node_index_dict.values())
@@ -36,11 +37,13 @@ impl GraphKernel for WassersteinHashKernel {
             .collect();
 
         // For each unique label, generate a unique random bit hash
-        for label in unique_labels {
+        for label in unique_labels.clone() {
             let hash: usize = rand::random::<usize>();
 
             self.labels_hash_dict.insert(*label, hash);
         }
+
+        assert_eq!(unique_labels.len(), self.labels_hash_dict.len());
 
         // For each graph, generate the node embeddings
         for graph in (&graphs).iter() {
@@ -78,12 +81,29 @@ impl GraphKernel for WassersteinHashKernel {
     }
 
     // Calculate the kernel matrix, between given and fitted dataset
-    fn transform(&self, graphs: Vec<Graph>) -> Array2<f64> {
+    fn transform(&mut self, graphs: Vec<Graph>) -> Array2<f64> {
         if self.x.is_empty() {
             panic!("The kernel has not been fitted yet");
         }
 
         let mut y: Vec<(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)> = Vec::new();
+
+        let unique_labels: Vec<&i32> = graphs
+            .iter()
+            .map(|graph| graph.node_index_dict.values())
+            .flatten()
+            .collect::<HashSet<&i32>>()
+            .into_iter()
+            .collect();
+
+        // For each unique label, generate a unique random bit hash
+        for label in unique_labels.clone() {
+            if self.labels_hash_dict.get(label) == None {
+                let hash: usize = rand::random::<usize>();
+
+                self.labels_hash_dict.insert(*label, hash);
+            }
+        }
 
         for graph in (&graphs).iter() {
             let mut new_labels: FxHashMap<usize, usize> = FxHashMap::default();
@@ -141,6 +161,7 @@ impl GraphKernel for WassersteinHashKernel {
                     .clone(),
                 (*count).try_into().unwrap(),
             );
+
             hash ^= *count as usize;
         }
 
@@ -156,9 +177,6 @@ impl GraphKernel for WassersteinHashKernel {
 
             let mut cache: Vec<&(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)> =
                 Vec::new();
-
-            let total_graphs = self.x.len();
-            let mut progress = 0;
 
             let mut max_value = std::f64::MIN;
             let mut min_value = std::f64::MAX;
@@ -187,9 +205,6 @@ impl GraphKernel for WassersteinHashKernel {
                     }
                 }
                 cache.push(&e);
-
-                progress += 1;
-                println!("Progress: {}/{}", progress, total_graphs);
             }
 
             WassersteinHashKernel::make_symmetric(&mut kernel_matrix);
@@ -197,10 +212,8 @@ impl GraphKernel for WassersteinHashKernel {
             // Normalize the kernel matrix
             for i in 0..self.x.len() {
                 for j in 0..self.x.len() {
-                    // println!("Before: {}", kernel_matrix[[i, j]]);
                     kernel_matrix[(i, j)] =
                         (kernel_matrix[(i, j)] - min_value) / (max_value - min_value);
-                    // println!("After: {}\n", kernel_matrix[[i, j]]);
                 }
             }
 
@@ -226,10 +239,8 @@ impl GraphKernel for WassersteinHashKernel {
 
             for i in 0..self.x.len() {
                 for j in 0..y.unwrap().len() {
-                    // println!("Before: {}", kernel_matrix[[i, j]]);
                     kernel_matrix[(i, j)] =
                         (kernel_matrix[(i, j)] - min_value) / (max_value - min_value);
-                    // println!("After: {}\n", kernel_matrix[[i, j]]);
                 }
             }
 
@@ -255,87 +266,39 @@ impl GraphKernel for WassersteinHashKernel {
         labels1: &FxHashMap<usize, usize>,
         labels2: &FxHashMap<usize, usize>,
     ) -> f64 {
-        // println!("Comparing labels");
-
         let n: usize = labels1.len();
         let n_prime: usize = labels2.len();
 
         let distance_matrix: Array2<f64> = self.compute_distance_matrix(labels1, labels2);
 
-        let mut problem = LpProblem::new("Transport problem", LpObjective::Minimize);
+        // let n = distance_matrix.shape()[0];
+        let mut source_weights = Array1::<f64>::from_elem(n, 1.0 / (n as f64));
+        let mut target_weights = Array1::<f64>::from_elem(n_prime, 1.0 / (n_prime as f64));
 
-        let mut p: Vec<Vec<LpContinuous>> = Vec::new();
-
-        // Create variables for the transport matrix p
-        for i in 0..n {
-            let mut row: Vec<LpContinuous> = Vec::new();
-            for j in 0..n_prime {
-                let var = LpContinuous::new(&format!("p_{}_{}", i, j));
-                problem += var.ge(0.0);
-                row.push(var);
-            }
-            p.push(row);
-        }
-
-        // Row constraints: sum of each row must be 1/n
-        for i in 0..n {
-            let mut row_constraint = LpExpression::from(0.0);
-            for j in 0..n_prime {
-                row_constraint += &p[i][j];
-            }
-
-            problem.add_constraints(&row_constraint.equal(1.0 / (n as f32)));
-        }
-
-        // Column constraints: sum of each column must be 1/n'
-        for j in 0..n_prime {
-            let mut column_constraint = LpExpression::from(0.0);
-            for i in 0..n {
-                column_constraint += &p[i][j];
-            }
-
-            problem.add_constraints(&column_constraint.equal(1.0 / (n_prime as f32)));
-        }
+        // Normalize the distance matrix for numerical stability
+        let mut max_cost = 0.0;
 
         for i in 0..n {
-            let mut objective: LpExpression = 0.0.into();
-
             for j in 0..n_prime {
-                let cost = distance_matrix[[i, j]] as f32;
-                objective += cost * &p[i][j];
-            }
-
-            problem.add_objective_expression(&mut objective);
-            break;
-        }
-
-        let solver = CbcSolver::new();
-
-        let mut transport_matrix: Array2<f64> = Array2::zeros((n, n_prime));
-
-        match solver.run(&problem) {
-            Ok(solution) => {
-                // fill transport matrix with solution values
-                for i in 0..n {
-                    // let mut row_sum = 0.0;
-                    for j in 0..n_prime {
-                        transport_matrix[[i, j]] =
-                            solution.results[&format!("p_{}_{}", i, j)] as f64;
-                    }
+                if distance_matrix[[i, j]] > max_cost {
+                    max_cost = distance_matrix[[i, j]];
                 }
             }
-            Err(msg) => {
-                println!("{}", msg);
-            }
         }
 
-        let mut wasserstein_distance: f64 = 0.0;
+        let mut normalized_cost = &distance_matrix / max_cost;
 
-        for (i, j) in transport_matrix.iter().zip(distance_matrix.iter()) {
-            wasserstein_distance += i * j;
-        }
+        let ot_matrix = EarthMovers::new(
+            &mut source_weights,
+            &mut target_weights,
+            &mut normalized_cost,
+        )
+        .solve()
+        .expect("Failed to solve the optimal transport problem");
 
-        let laplacian_kernel = self.compute_laplacian_kernel(wasserstein_distance, 1.2);
+        let wasserstein_distance: f64 = (&distance_matrix * &ot_matrix).sum();
+
+        let laplacian_kernel = self.compute_laplacian_kernel(wasserstein_distance, 0.5);
 
         laplacian_kernel
     }

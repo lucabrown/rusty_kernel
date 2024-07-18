@@ -79,12 +79,29 @@ impl GraphKernel for NeighbourhoodHashKernel {
     }
 
     // Calculate the kernel matrix, between given and fitted dataset
-    fn transform(&self, graphs: Vec<Graph>) -> Array2<f64> {
+    fn transform(&mut self, graphs: Vec<Graph>) -> Array2<f64> {
         if self.x.is_empty() {
             panic!("The kernel has not been fitted yet");
         }
 
         let mut y: Vec<(usize, FxHashMap<usize, usize>, FxHashMap<usize, Vec<usize>>)> = Vec::new();
+
+        let unique_labels: Vec<&i32> = graphs
+            .iter()
+            .map(|graph| graph.node_index_dict.values())
+            .flatten()
+            .collect::<HashSet<&i32>>()
+            .into_iter()
+            .collect();
+
+        // For each unique label, generate a unique random bit hash
+        for label in unique_labels.clone() {
+            if self.labels_hash_dict.get(label) == None {
+                let hash: usize = rand::random::<usize>();
+
+                self.labels_hash_dict.insert(*label, hash);
+            }
+        }
 
         for graph in (&graphs).iter() {
             let mut new_labels: FxHashMap<usize, usize> = FxHashMap::default();
@@ -185,8 +202,6 @@ impl GraphKernel for NeighbourhoodHashKernel {
                     kernel_matrix[(i, j)] = self.compare_labels(&e.1, &f.1);
                 }
             }
-
-            // print!("{:?}", kernel_matrix);
 
             kernel_matrix
         }

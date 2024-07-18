@@ -148,7 +148,7 @@ fn train_test_split(
 
 fn main() {
     // for each folder in ./DATA
-    for folder in fs::read_dir("./DATA").unwrap() {
+    for folder in fs::read_dir("./TEST").unwrap() {
         // let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {
         //     labels_hash_dict: FxHashMap::default(),
         //     x: Vec::new(),

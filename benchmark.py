@@ -1,12 +1,8 @@
-from collections import defaultdict
 import os
-from re import T
-from networkx import k_truss, powerlaw_cluster_graph
 import numpy as np
 import time
 from grakel import Graph
-from grakel.kernels import WeisfeilerLehman, VertexHistogram, EdgeHistogram, NeighborhoodHash, WeisfeilerLehmanOptimalAssignment
-import scipy as sp
+from grakel.kernels import NeighborhoodHash
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
@@ -82,7 +78,7 @@ def transform_data(graphs):
 
     return list
 
-f = './DATA'
+f = './TEST'
 
 random_state = 42
 
@@ -90,7 +86,7 @@ n = 10
 
 
 graph_kernels = [
-    NeighborhoodHash(normalize=True, random_state=random_state, R=1, nh_type='count_sensitive'),
+    NeighborhoodHash(normalize=True, R=1, nh_type='count_sensitive'),
 ]
 
 dict = {}
@@ -113,8 +109,6 @@ for kernel in graph_kernels:
 
         folder_read_time = time.time()
 
-        G_train, G_test, y_train, y_test = train_test_split(graphs, labels, test_size=0.1)
-
         r_average_time = 0
         p_average_time = 0
 
@@ -125,6 +119,7 @@ for kernel in graph_kernels:
         r_values = []
 
         for i in range(n):
+            G_train, G_test, y_train, y_test = train_test_split(graphs, labels, test_size=0.2)
 
             gk = rusty_kernel.PyGraphKernel() # type: ignore
 
@@ -157,6 +152,7 @@ for kernel in graph_kernels:
             p_values.append(accuracy_p)
             r_values.append(accuracy_r)
 
+            print("Percentage done: {:.2f}%".format((i + 1) / n * 100), end="\r")
 
 
         p_average_time /= n
@@ -180,38 +176,3 @@ for kernel in graph_kernels:
         # print accuracy and standard deviation
         print(f"Python accuracy: {p_average_accuracy * 100:.2f} % ± {p_standard_deviation * 100:.2f}")
         print(f"Rust accuracy:   {r_average_accuracy * 100:.2f} % ± {r_standard_deviation * 100:.2f}\n")
-
-        # data_fit_time = time.time()
-        
-        # K_train_p = kernel.fit_transform(G_train)
-        # K_test_p = kernel.transform(G_test)
-
-        # p_train_time = time.time()
-        
-        # K_train_r = gk.fit_transform(transform_data(G_train))
-        # K_test_r = gk.transform(transform_data(G_test)).T
-
-        # end_time = time.time()
-
-        # print("Read time: {:.3f} s".format(folder_read_time - start_time))
-
-
-        # print("Python fit time: {:.3f} s".format(p_train_time - data_fit_time))
-        # print("Rust fit time:   {:.3f} s".format(end_time - p_train_time))
-        # print()
-        
-        # clf_p = SVC(kernel='precomputed')
-        # clf_p.fit(K_train_p, y_train)
-        # y_pred_p = clf_p.predict(K_test_p)
-
-        # clf_r = SVC(kernel='precomputed')
-        # clf_r.fit(K_train_r, y_train)
-        # y_pred_r = clf_r.predict(K_test_r)
-
-        # accuracy_p = accuracy_score(y_test, y_pred_p)
-        # accuracy_r = accuracy_score(y_test, y_pred_r)
-        # print(f"Python accuracy: {accuracy_p * 100:.2f} %")
-        # print(f"Rust accuracy:   {accuracy_r * 100:.2f} %\n")
-
-        
-    dict[kernel] = results

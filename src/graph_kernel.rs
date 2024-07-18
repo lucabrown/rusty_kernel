@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 use crate::graph::Graph;
 
 pub(crate) trait GraphKernel {
+    #[allow(dead_code)]
     fn new() -> Self;
 
     // Fit a dataset for a transformer
@@ -13,7 +14,8 @@ pub(crate) trait GraphKernel {
     fn fit_transform(&mut self, graphs: Vec<Graph>) -> Array2<f64>;
 
     //  Calculate the kernel matrix, between given and fitted dataset
-    fn transform(&self, graphs: Vec<Graph>) -> Array2<f64>;
+    #[allow(dead_code)]
+    fn transform(&mut self, graphs: Vec<Graph>) -> Array2<f64>;
 
     // Calculate the count sensitive neighbourhood hash of the fitted dataset
     fn neighbourhood_hash(

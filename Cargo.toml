@@ -3,9 +3,9 @@ name = "rusty_kernel"
 version = "0.1.0"
 edition = "2021"
 
-# [lib]
-# name = "rusty_kernel"
-# crate-type = ["cdylib"]
+[lib]
+name = "rusty_kernel"
+crate-type = ["cdylib"]
 
 # [[bin]]
 # name = "rusty_kernel"
@@ -18,7 +18,7 @@ ndarray = "0.15.4"
 numpy = "0.17.0"
 pyo3 = { version = "0.17.0", features = ["extension-module"] }
 # libc = "0.2.110"
-lp-modeler = "0.5.0"
+rust-optimal-transport = "0.2"
 
 [profile.release]
 opt-level = 3
