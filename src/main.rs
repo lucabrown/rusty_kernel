@@ -148,10 +148,9 @@ fn train_test_split(
 
 fn main() {
     // for each folder in ./DATA
-    for folder in fs::read_dir("./TEST").unwrap() {
+    for folder in fs::read_dir("./DATA").unwrap() {
         // let mut kernel: NeighbourhoodHashKernel = NeighbourhoodHashKernel {
         //     labels_hash_dict: FxHashMap::default(),
-        //     r: 2,
         //     x: Vec::new(),
         // };
 
@@ -174,15 +173,15 @@ fn main() {
         let folder_read_time = start_time.elapsed().as_secs_f64();
 
         let kernel_matrix = kernel.fit_transform(graphs.clone());
-        let k = kernel.transform(graphs);
+        // let k = kernel.transform(graphs);
 
         // print kernel matrix
-        for i in 0..kernel_matrix.shape()[0] {
-            for j in 0..kernel_matrix.shape()[1] {
-                print!("{:.3} ", kernel_matrix[[i, j]]);
-            }
-            println!();
-        }
+        // for i in 0..kernel_matrix.shape()[0] {
+        //     for j in 0..kernel_matrix.shape()[1] {
+        //         print!("{:.3} ", kernel_matrix[[i, j]]);
+        //     }
+        //     println!();
+        // }
 
         let dat_fit_time = start_time.elapsed().as_secs_f64() - folder_read_time;
 

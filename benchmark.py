@@ -86,6 +86,8 @@ f = './DATA'
 
 random_state = 42
 
+n = 10
+
 
 graph_kernels = [
     NeighborhoodHash(normalize=True, random_state=random_state, R=1, nh_type='count_sensitive'),
@@ -111,40 +113,105 @@ for kernel in graph_kernels:
 
         folder_read_time = time.time()
 
-        G_train, G_test, y_train, y_test = train_test_split(graphs, labels, test_size=0.1, random_state=random_state)
- 
-        
-        data_fit_time = time.time()
-        
-        K_train_p = kernel.fit_transform(G_train)
-        K_test_p = kernel.transform(G_test)
+        G_train, G_test, y_train, y_test = train_test_split(graphs, labels, test_size=0.1)
 
-        p_train_time = time.time()
-        
-        K_train_r = gk.fit_transform(transform_data(G_train))
-        K_test_r = gk.transform(transform_data(G_test)).T
+        r_average_time = 0
+        p_average_time = 0
 
-        end_time = time.time()
+        r_average_accuracy = 0
+        p_average_accuracy = 0
+
+        p_values = []
+        r_values = []
+
+        for i in range(n):
+
+            gk = rusty_kernel.PyGraphKernel() # type: ignore
+
+            data_fit_time = time.time()
+
+            K_train_p = kernel.fit_transform(G_train)
+            K_test_p = kernel.transform(G_test)
+
+            p_train_time = time.time()
+
+            K_train_r = gk.fit_transform(transform_data(G_train))
+            K_test_r = gk.transform(transform_data(G_test)).T
+
+            end_time = time.time()
+
+            p_average_time += p_train_time - data_fit_time
+            r_average_time += end_time - p_train_time
+
+            clf_p = SVC(kernel='precomputed')
+            clf_p.fit(K_train_p, y_train)
+            y_pred_p = clf_p.predict(K_test_p)
+
+            clf_r = SVC(kernel='precomputed')
+            clf_r.fit(K_train_r, y_train)
+            y_pred_r = clf_r.predict(K_test_r)
+
+            accuracy_p = accuracy_score(y_test, y_pred_p)
+            accuracy_r = accuracy_score(y_test, y_pred_r)
+
+            p_values.append(accuracy_p)
+            r_values.append(accuracy_r)
+
+
+
+        p_average_time /= n
+        r_average_time /= n
+
+        p_average_accuracy = sum(p_values) / n
+        r_average_accuracy = sum(r_values) / n
+
+        p_standard_deviation = np.std(p_values)
+        r_standard_deviation = np.std(r_values)
+
+        print(r_values)
+        print(p_values)
 
         print("Read time: {:.3f} s".format(folder_read_time - start_time))
 
-
-        print("Python fit time: {:.3f} s".format(p_train_time - data_fit_time))
-        print("Rust fit time:   {:.3f} s".format(end_time - p_train_time))
+        print("Python fit time: {:.3f} s".format(p_average_time))
+        print("Rust fit time:   {:.3f} s".format(r_average_time))
         print()
+
+        # print accuracy and standard deviation
+        print(f"Python accuracy: {p_average_accuracy * 100:.2f} % ± {p_standard_deviation * 100:.2f}")
+        print(f"Rust accuracy:   {r_average_accuracy * 100:.2f} % ± {r_standard_deviation * 100:.2f}\n")
+
+        # data_fit_time = time.time()
         
-        clf_p = SVC(kernel='precomputed')
-        clf_p.fit(K_train_p, y_train)
-        y_pred_p = clf_p.predict(K_test_p)
+        # K_train_p = kernel.fit_transform(G_train)
+        # K_test_p = kernel.transform(G_test)
 
-        clf_r = SVC(kernel='precomputed')
-        clf_r.fit(K_train_r, y_train)
-        y_pred_r = clf_r.predict(K_test_r)
+        # p_train_time = time.time()
+        
+        # K_train_r = gk.fit_transform(transform_data(G_train))
+        # K_test_r = gk.transform(transform_data(G_test)).T
 
-        accuracy_p = accuracy_score(y_test, y_pred_p)
-        accuracy_r = accuracy_score(y_test, y_pred_r)
-        print(f"Python accuracy: {accuracy_p * 100:.2f} %")
-        print(f"Rust accuracy:   {accuracy_r * 100:.2f} %\n")
+        # end_time = time.time()
+
+        # print("Read time: {:.3f} s".format(folder_read_time - start_time))
+
+
+        # print("Python fit time: {:.3f} s".format(p_train_time - data_fit_time))
+        # print("Rust fit time:   {:.3f} s".format(end_time - p_train_time))
+        # print()
+        
+        # clf_p = SVC(kernel='precomputed')
+        # clf_p.fit(K_train_p, y_train)
+        # y_pred_p = clf_p.predict(K_test_p)
+
+        # clf_r = SVC(kernel='precomputed')
+        # clf_r.fit(K_train_r, y_train)
+        # y_pred_r = clf_r.predict(K_test_r)
+
+        # accuracy_p = accuracy_score(y_test, y_pred_p)
+        # accuracy_r = accuracy_score(y_test, y_pred_r)
+        # print(f"Python accuracy: {accuracy_p * 100:.2f} %")
+        # print(f"Rust accuracy:   {accuracy_r * 100:.2f} %\n")
 
         
     dict[kernel] = results

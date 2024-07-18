@@ -7,6 +7,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     graph::Graph, graph_kernel::GraphKernel, neighbourhood_hash_kernel::NeighbourhoodHashKernel,
+    wasserstein_hash_kernel::WassersteinHashKernel,
 };
 
 #[pyclass]
