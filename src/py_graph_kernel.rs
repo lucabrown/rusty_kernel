@@ -12,16 +12,41 @@ use crate::{
 
 #[pyclass]
 pub struct PyGraphKernel {
-    kernel: WassersteinHashKernel,
+    kernel: KernelType,
+}
+
+enum KernelType {
+    NeighbourhoodHash(NeighbourhoodHashKernel),
+    WassersteinHash(WassersteinHashKernel),
+}
+
+impl KernelType {
+    fn fit_transform(&mut self, graphs: Vec<Graph>) -> Array2<f64> {
+        match self {
+            KernelType::NeighbourhoodHash(kernel) => kernel.fit_transform(graphs),
+            KernelType::WassersteinHash(kernel) => kernel.fit_transform(graphs),
+        }
+    }
+
+    fn transform(&mut self, graphs: Vec<Graph>) -> Array2<f64> {
+        match self {
+            KernelType::NeighbourhoodHash(kernel) => kernel.transform(graphs),
+            KernelType::WassersteinHash(kernel) => kernel.transform(graphs),
+        }
+    }
 }
 
 #[pymethods]
 impl PyGraphKernel {
     #[new]
-    fn new() -> Self {
-        PyGraphKernel {
-            kernel: WassersteinHashKernel::new(),
-        }
+    fn new(t: i32) -> Self {
+        let kernel = match t {
+            0 => KernelType::NeighbourhoodHash(NeighbourhoodHashKernel::new()),
+            1 => KernelType::WassersteinHash(WassersteinHashKernel::new()),
+            _ => KernelType::NeighbourhoodHash(NeighbourhoodHashKernel::new()),
+        };
+
+        PyGraphKernel { kernel }
     }
 
     fn fit_transform(

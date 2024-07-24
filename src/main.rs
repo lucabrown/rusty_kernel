@@ -5,14 +5,12 @@ mod wasserstein_hash_kernel;
 
 use graph::Graph;
 use graph_kernel::GraphKernel;
-use neighbourhood_hash_kernel::NeighbourhoodHashKernel;
 use wasserstein_hash_kernel::WassersteinHashKernel;
 
-use ndarray::Array2;
+use memory_stats::memory_stats;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rustc_hash::FxHashMap;
-use std::iter::FromIterator;
 
 use std::{
     collections::HashSet,
@@ -184,8 +182,6 @@ fn main() {
         // }
 
         let dat_fit_time = start_time.elapsed().as_secs_f64() - folder_read_time;
-
-        // let t = kernel.transform(graphs);
 
         println!(
             "\nFolder: {}\nRead time: {:.3} s\nFit time: {:.3} s",

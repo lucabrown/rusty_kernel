@@ -86,7 +86,7 @@ n = 10
 
 
 graph_kernels = [
-    NeighborhoodHash(normalize=True, R=1, nh_type='count_sensitive'),
+    NeighborhoodHash(normalize=True, R=1, nh_type='count_sensitive', bits=26),
 ]
 
 dict = {}
@@ -97,7 +97,7 @@ for kernel in graph_kernels:
     results = []
 
     for folder in os.listdir(f):
-        gk = rusty_kernel.PyGraphKernel() # type: ignore
+        gk = rusty_kernel.PyGraphKernel(0) # type: ignore
 
         print(f"- On {folder}")
 
@@ -121,7 +121,7 @@ for kernel in graph_kernels:
         for i in range(n):
             G_train, G_test, y_train, y_test = train_test_split(graphs, labels, test_size=0.2)
 
-            gk = rusty_kernel.PyGraphKernel() # type: ignore
+            gk = rusty_kernel.PyGraphKernel(0) # type: ignore
 
             data_fit_time = time.time()
 
@@ -163,9 +163,6 @@ for kernel in graph_kernels:
 
         p_standard_deviation = np.std(p_values)
         r_standard_deviation = np.std(r_values)
-
-        print(r_values)
-        print(p_values)
 
         print("Read time: {:.3f} s".format(folder_read_time - start_time))
 

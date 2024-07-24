@@ -43,8 +43,6 @@ impl GraphKernel for WassersteinHashKernel {
             self.labels_hash_dict.insert(*label, hash);
         }
 
-        assert_eq!(unique_labels.len(), self.labels_hash_dict.len());
-
         // For each graph, generate the node embeddings
         for graph in (&graphs).iter() {
             let mut new_labels: FxHashMap<usize, usize> = FxHashMap::default();
@@ -271,6 +269,9 @@ impl GraphKernel for WassersteinHashKernel {
 
         let distance_matrix: Array2<f64> = self.compute_distance_matrix(labels1, labels2);
 
+        let epsilon = 1e-6;
+        let adjusted_distance_matrix = distance_matrix.mapv(|x| if x == 0.0 { epsilon } else { x });
+
         // let n = distance_matrix.shape()[0];
         let mut source_weights = Array1::<f64>::from_elem(n, 1.0 / (n as f64));
         let mut target_weights = Array1::<f64>::from_elem(n_prime, 1.0 / (n_prime as f64));
@@ -280,15 +281,29 @@ impl GraphKernel for WassersteinHashKernel {
 
         for i in 0..n {
             for j in 0..n_prime {
-                if distance_matrix[[i, j]] > max_cost {
-                    max_cost = distance_matrix[[i, j]];
+                if adjusted_distance_matrix[[i, j]] > max_cost {
+                    max_cost = adjusted_distance_matrix[[i, j]];
                 }
             }
         }
 
-        let mut normalized_cost = &distance_matrix / max_cost;
+        let mut normalized_cost = &adjusted_distance_matrix / max_cost;
 
-        let ot_matrix = EarthMovers::new(
+        // print the distance matrix and wource and target weight
+        // println!("Distance matrix: {:?}", adjusted_distance_matrix);
+        // println!("Source weights: {:?}", source_weights);
+        // println!("Target weights: {:?}", target_weights);
+
+        assert!(
+            (source_weights.sum() - 1.0).abs() < 1e-6,
+            "Source weights do not sum to 1."
+        );
+        assert!(
+            (target_weights.sum() - 1.0).abs() < 1e-6,
+            "Target weights do not sum to 1."
+        );
+
+        let transport_matrix = EarthMovers::new(
             &mut source_weights,
             &mut target_weights,
             &mut normalized_cost,
@@ -296,9 +311,9 @@ impl GraphKernel for WassersteinHashKernel {
         .solve()
         .expect("Failed to solve the optimal transport problem");
 
-        let wasserstein_distance: f64 = (&distance_matrix * &ot_matrix).sum();
+        let wasserstein_distance: f64 = (&adjusted_distance_matrix * &transport_matrix).sum();
 
-        let laplacian_kernel = self.compute_laplacian_kernel(wasserstein_distance, 0.5);
+        let laplacian_kernel = self.compute_laplacian_kernel(wasserstein_distance, 20.0);
 
         laplacian_kernel
     }

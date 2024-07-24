@@ -7,10 +7,6 @@ edition = "2021"
 name = "rusty_kernel"
 crate-type = ["cdylib"]
 
-# [[bin]]
-# name = "rusty_kernel"
-# path = "src/main.rs"
-
 [dependencies]
 rand = "0.8.4"
 rustc-hash = "1.1"
