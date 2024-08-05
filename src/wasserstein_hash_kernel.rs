@@ -8,6 +8,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{graph::Graph, graph_kernel::GraphKernel};
 
+/// The WassersteinHashKernel struct represents a kernel that calculates the Wasserstein distance between two graphs
 pub struct WassersteinHashKernel {
     // The base map of labels to hashes
     pub labels_hash_dict: FxHashMap<i32, usize>,

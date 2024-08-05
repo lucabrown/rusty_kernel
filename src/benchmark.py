@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import time
-from grakel import Graph
+from grakel import Graph, VertexHistogram, WeisfeilerLehman, WeisfeilerLehmanOptimalAssignment
 from grakel.kernels import NeighborhoodHash
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
@@ -86,7 +86,7 @@ n = 10
 
 
 graph_kernels = [
-    NeighborhoodHash(normalize=True, R=1, nh_type='count_sensitive', bits=26),
+    NeighborhoodHash(normalize=True, R=1, nh_type='count_sensitive'),
 ]
 
 dict = {}
@@ -164,6 +164,9 @@ for kernel in graph_kernels:
         p_standard_deviation = np.std(p_values)
         r_standard_deviation = np.std(r_values)
 
+        p_standard_error = p_standard_deviation / np.sqrt(n)
+        r_standard_error = r_standard_deviation / np.sqrt(n)
+
         print("Read time: {:.3f} s".format(folder_read_time - start_time))
 
         print("Python fit time: {:.3f} s".format(p_average_time))
@@ -171,5 +174,5 @@ for kernel in graph_kernels:
         print()
 
         # print accuracy and standard deviation
-        print(f"Python accuracy: {p_average_accuracy * 100:.2f} % ± {p_standard_deviation * 100:.2f}")
-        print(f"Rust accuracy:   {r_average_accuracy * 100:.2f} % ± {r_standard_deviation * 100:.2f}\n")
+        print(f"Python accuracy: {p_average_accuracy * 100:.2f} % ± {p_standard_error * 100:.2f}")
+        print(f"Rust accuracy:   {r_average_accuracy * 100:.2f} % ± {r_standard_error * 100:.2f}\n")

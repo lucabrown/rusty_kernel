@@ -7,7 +7,6 @@ use graph::Graph;
 use graph_kernel::GraphKernel;
 use wasserstein_hash_kernel::WassersteinHashKernel;
 
-use memory_stats::memory_stats;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rustc_hash::FxHashMap;
@@ -18,7 +17,7 @@ use std::{
     io::{self, BufRead},
 };
 
-// TODO: change vertices to be index and node_dict to be index
+/// Read the data from the given folder path
 fn read_data(folder_path: &str) -> io::Result<(Vec<Graph>, Vec<i32>)> {
     // Read the adjacency matrix file
     let mut edges: Vec<(usize, usize)> = Vec::new();
@@ -171,15 +170,6 @@ fn main() {
         let folder_read_time = start_time.elapsed().as_secs_f64();
 
         let kernel_matrix = kernel.fit_transform(graphs.clone());
-        // let k = kernel.transform(graphs);
-
-        // print kernel matrix
-        // for i in 0..kernel_matrix.shape()[0] {
-        //     for j in 0..kernel_matrix.shape()[1] {
-        //         print!("{:.3} ", kernel_matrix[[i, j]]);
-        //     }
-        //     println!();
-        // }
 
         let dat_fit_time = start_time.elapsed().as_secs_f64() - folder_read_time;
 

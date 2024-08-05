@@ -1,13 +1,14 @@
 use rustc_hash::FxHashMap;
 
+/// The Graph struct represents a graph as an adjacency matrix
 pub struct Graph {
-    // The adjacency matrix
+    /// The adjacency matrix
     pub adjacency_matrix: Vec<Vec<usize>>,
 
-    // Label dictionary for indexes, of adjacency matrix. Keys are valid numbers from 0 to n-1.
+    /// Label dictionary for indexes, of adjacency matrix. Keys are valid numbers from 0 to n-1.
     pub node_index_dict: FxHashMap<usize, i32>,
 
-    // The set of vertices corresponding to the edge_dictionary representation
+    /// The set of vertices corresponding to the edge_dictionary representation
     pub n_vertices: usize,
 }
 

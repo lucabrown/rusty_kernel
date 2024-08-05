@@ -70,6 +70,7 @@ def read_data(folder_path):
     
     return graphs, labels
 
+# Transform the data into a format that can be used by the graph kernels
 def transform_data(graphs):
     list = []
 
@@ -108,7 +109,7 @@ for folder in os.listdir(f):
     wnh_values = []
 
     for i in range(n):
-        G_train, G_test, y_train, y_test = train_test_split(graphs, labels, test_size=0.1)
+        G_train, G_test, y_train, y_test = train_test_split(graphs, labels, test_size=0.2)
 
         csnh = rusty_kernel.PyGraphKernel(0) # type: ignore
         wnh = rusty_kernel.PyGraphKernel(1) # type: ignore
@@ -143,6 +144,8 @@ for folder in os.listdir(f):
         csnh_values.append(accuracy_r)
 
         print("Percentage done: {:.2f}%".format((i + 1) / n * 100), end="\r")
+    
+    print("                                                    ")
 
 
     wnh_average_time /= n
@@ -154,6 +157,9 @@ for folder in os.listdir(f):
     wnh_standard_deviation = np.std(wnh_values)
     csnh_standard_deviation = np.std(csnh_values)
 
+    wnh_standard_error = wnh_standard_deviation / np.sqrt(n)
+    csnh_standard_error = csnh_standard_deviation / np.sqrt(n)
+
     print("Read time: {:.3f} s".format(folder_read_time - start_time))
 
     print("WNH fit time:    {:.3f} s".format(wnh_average_time))
@@ -161,5 +167,5 @@ for folder in os.listdir(f):
     print()
 
     # print accuracy and standard deviation
-    print(f"WNH accuracy:    {wnh_average_accuracy * 100:.2f} % ± {wnh_standard_deviation * 100:.2f}")
-    print(f"CSNH accuracy:   {csnh_average_accuracy * 100:.2f} % ± {csnh_standard_deviation * 100:.2f}\n")
+    print(f"WNH accuracy:    {wnh_average_accuracy * 100:.2f} % ± {wnh_standard_error * 100:.2f}")
+    print(f"CSNH accuracy:   {csnh_average_accuracy * 100:.2f} % ± {csnh_standard_error * 100:.2f}\n")

@@ -5,6 +5,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{graph::Graph, graph_kernel::GraphKernel};
 
+/// The NeighbourhoodHashKernel struct represents a kernel that calculates the count sensitive neighbourhood hash
 pub struct NeighbourhoodHashKernel {
     // The base map of labels to hashes
     pub labels_hash_dict: FxHashMap<i32, usize>,
