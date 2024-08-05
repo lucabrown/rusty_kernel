@@ -153,6 +153,8 @@ for kernel in graph_kernels:
             r_values.append(accuracy_r)
 
             print("Percentage done: {:.2f}%".format((i + 1) / n * 100), end="\r")
+    
+        print("                                                    ")
 
 
         p_average_time /= n
