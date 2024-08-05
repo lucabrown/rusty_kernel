@@ -40,7 +40,7 @@ maturin develop -r
 
 ## Usage
 
-Download datasets [here](https://chrsmrrs.github.io/datasets/) and place in the `TEST` folder. Then run the following to compare the CSNH kernel Rust implementation to the `GraKel` implementation: 
+Download datasets [here](https://chrsmrrs.github.io/datasets/) and place in the `TEST` folder (MUTAG, BZR_MD, ENZYMES included for convenience). Then run the following to compare the CSNH kernel Rust implementation to the `GraKel` implementation: 
 
 ```bash
 python3 src/benchmark_rust.py
