@@ -1,5 +1,8 @@
 # rusty_kernel
 
+I verify that I am the sole author of the programmes contained in this archive, except where explicitly stated to the contrary.
+Luca Brown 6 Aug 2024.
+
 This library is used to create an instance of the Wasserstein Neighbourhood Hash kernel. You can import the `py_graph_kernel` class into a Python environment and use it in conjunction with `scikit_learn` to train it on machine learning datasets. 
 
 This repository contains the source code for the MSc Advanced Computing personal project.
